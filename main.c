@@ -6,6 +6,8 @@
 #include "stdlib.h"
 #include "signal.h"
 #include "unistd.h"
+#include "fcntl.h"
+#include "errno.h"
 
 #define BACKLOG 5
 
@@ -60,6 +62,10 @@ int main(void) {
                         }
                         shutdown(s1, SHUT_RDWR);
                         close(s1);
+                    } else if (errno = EINTR) {
+                        continue;
+                    } else {
+                        perror("accept error");
                     }
                 } while (exit_flag == 0);
                 shutdown(s, SHUT_RDWR);
