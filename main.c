@@ -5,6 +5,7 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "signal.h"
+#include "unistd.h"
 
 #define BACKLOG 5
 
@@ -58,9 +59,11 @@ int main(void) {
                             perror("'send' call error");
                         }
                         shutdown(s1, SHUT_RDWR);
+                        close(s1);
                     }
                 } while (exit_flag == 0);
                 shutdown(s, SHUT_RDWR);
+                close(s);
             }
             else
             {
