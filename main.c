@@ -25,6 +25,7 @@ int main(void) {
     int s1; // accepted socket
     int rc; // return code
     struct sigaction act;
+    int on = 1;
 
     printf("TinyNetSrv started\n");
 
@@ -38,49 +39,49 @@ int main(void) {
 
     s = socket(AF_INET, SOCK_STREAM, 0);
     if (s != -1) {
-        rc = bind(s, (const struct sockaddr *)&local, sizeof(local));
-        if (rc==0) {
-            rc = listen(s, BACKLOG);
+        rc = setsockopt(s,SOL_SOCKET,SO_REUSEADDR,&on,sizeof(int));
+        if (rc == -1) {
+            perror("'setsockopt' call error");
+        } else {
+            rc = bind(s, (const struct sockaddr *)&local, sizeof(local));
             if (rc==0) {
-                do{
-                    struct sockaddr_in addr;
-                    int adr_len = sizeof(addr);
-                    s1 = accept(s, (struct sockaddr *)&addr, &adr_len);
-                    if (s1 != -1) {
-                        printf("Connection accepted: %s\n", inet_ntoa(addr.sin_addr));
-                        int t = 1;
-                        rc = setsockopt(s1,SOL_SOCKET,SO_REUSEADDR,&t,sizeof(int));
-                        if (rc == -1) {
-                            perror("'setsockopt' call error");
+                rc = listen(s, BACKLOG);
+                if (rc==0) {
+                    do{
+                        struct sockaddr_in addr;
+                        int adr_len = sizeof(addr);
+                        s1 = accept(s, (struct sockaddr *)&addr, &adr_len);
+                        if (s1 != -1) {
+                            printf("Connection accepted: %s\n", inet_ntoa(addr.sin_addr));
+                            // TODO: call handler thread
+                            // TODO: remove it (it is example):
+                            char resp[] = "HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE html><html><body><h1>Sample of response</h1><body></html>";
+                            rc = send(s1, (void *)resp, sizeof(resp)-1, 0);
+                            if (rc == -1) {
+                                perror("'send' call error");
+                            }
+                            shutdown(s1, SHUT_RDWR);
+                            close(s1);
+                        } else if (errno = EINTR) {
+                            continue;
+                        } else {
+                            perror("accept error");
                         }
-                        // TODO: call handler thread
-                        // TODO: remove it (it is example):
-                        char resp[] = "HTTP/1.0 200 OK\r\nConnection: close\r\nContent-Type: text/html\r\n\r\n<!DOCTYPE html><html><body><h1>Sample of response</h1><body></html>";
-                        rc = send(s1, (void *)resp, sizeof(resp)-1, 0);
-                        if (rc == -1) {
-                            perror("'send' call error");
-                        }
-                        shutdown(s1, SHUT_RDWR);
-                        close(s1);
-                    } else if (errno = EINTR) {
-                        continue;
-                    } else {
-                        perror("accept error");
-                    }
-                } while (exit_flag == 0);
-                shutdown(s, SHUT_RDWR);
-                close(s);
+                    } while (exit_flag == 0);
+                    shutdown(s, SHUT_RDWR);
+                    close(s);
+                }
+                else
+                {
+                    perror("'listen' call error");
+                    exit(1);
+                }
             }
             else
             {
-                perror("'listen' call error");
+                perror("'bind' call error");
                 exit(1);
             }
-        }
-        else
-        {
-            perror("'bind' call error");
-            exit(1);
         }
     }
     else
